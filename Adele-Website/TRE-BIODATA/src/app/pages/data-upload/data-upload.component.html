@@ -1,0 +1,90 @@
+<div class="container">
+  <div class="row">
+    <div class="col-md-12 text-center">
+      <h1>Data Submission</h1>
+    </div>
+  </div>
+
+  <p>Follow the steps below to upload your data to the TRE:</p>
+  <ol class="guide-list">
+    <li>
+      <p>Create the TRE’s public key file with the following content:</p>
+      <app-code-display code="ssh-ed25519 [...]"></app-code-display>
+    </li>
+    <li>
+      <p>Encrypt your files with the crypt4gh algorithm using the TRE's public key:</p>
+      <app-code-display code="crypt4gh encrypt --recipient_pk TRE.pub < filename > filename.c4gh"></app-code-display>
+    </li>
+    <li>
+      <p>Upload your encrypted file using the drag and drop area below.</p>
+    </li>
+  </ol>
+
+  <div class="file-upload-container">
+    <input type="file" id="fileInput" (change)="onFileSelected($event)" [attr.maxSize]="2 * 1024 * 1024 * 1024"
+      hidden />
+    <div class="drop-zone d-flex flex-column" (drop)="onDrop($event)" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)"
+      [class.active]="dragActive">
+      <p>
+        <span>
+          Drag & drop your encrypted file here
+        </span>
+      </p>
+      <p>
+        <span>
+          or <label for="fileInput" class="upload-link">browse</label>
+        </span>
+      </p>
+      <p *ngIf="selectedFile">
+        <span>
+          Selected: {{ selectedFile.name }} ({{ selectedFile.size | number }} bytes)
+        </span>
+      </p>
+    </div>
+    <div *ngIf="!isValidFile()" class="text-danger mt-2">
+      {{ error_message }}
+    </div>
+    <button class="btn btn-primary mt-3" [disabled]="!isValidFile()" (click)="uploadFile()">
+      Upload File
+    </button>
+
+  </div>
+</div>
+
+
+
+<!-- Crypt4GH Information Section -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h3>About Crypt4GH</h3>
+    <p>
+      <strong>Crypt4GH</strong> is a secure file format and encryption tool designed for genomic data sharing, developed
+      by the Global Alliance for Genomics and Health (GA4GH). It enables you to encrypt genomic files so they can be
+      safely transferred and stored, ensuring only authorized users can decrypt and access the data.
+    </p>
+    <p>
+      For more details, see the <a href="https://github.com/EGA-archive/crypt4gh" target="_blank">official Crypt4GH
+        repository</a>.
+    </p>
+    <h4 class="mt-4">How to Install Crypt4GH</h4>
+    <ol>
+      <li>
+        <strong>Install via pip (recommended):</strong>
+        <app-code-display code="pip install crypt4gh"></app-code-display>
+      </li>
+      <li>
+        <strong>Or install from source:</strong>
+        <app-code-display code="git clone https://github.com/EGA-archive/crypt4gh.git"></app-code-display>
+        <app-code-display code="cd crypt4gh && pip install ."></app-code-display>
+      </li>
+      <li>
+        <strong>Verify installation:</strong>
+        <app-code-display code="crypt4gh --help"></app-code-display>
+      </li>
+    </ol>
+    <p>
+      Crypt4GH requires Python 3.6 or higher. For more advanced usage and troubleshooting, refer to the <a
+        href="https://github.com/EGA-archive/crypt4gh" target="_blank">GitHub documentation</a>.
+    </p>
+  </div>
+</div>

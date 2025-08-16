@@ -1,0 +1,115 @@
+services:
+  mongodb:
+    image: mongo:8.0
+    container_name: adele-mongodb
+    restart: always
+    ports:
+      - "${MONGODB_PORT}:27017"
+    volumes:
+      #- ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - adele_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - backend_db
+
+  adele-backoffice-frontend:
+    build:
+      context: ./Adele-Backoffice/backoffice-tre
+      dockerfile: Dockerfile.frontend
+    container_name: adele-backoffice-frontend
+    ports:
+      - "${BACKOFFICE_FRONTEND_PORT}:80"
+    depends_on:
+      - adele-backoffice-backend
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - backoffice_frontend_backend
+    environment:
+      - BACKEND_URL=http://localhost:${BACKOFFICE_BACKEND_PORT}
+
+
+  adele-backoffice-backend:
+    build:
+      context: ./Adele-Backoffice/backend
+      dockerfile: Dockerfile
+    container_name: adele-backoffice-backend
+    ports:
+      - "${BACKOFFICE_BACKEND_PORT}:${BACKOFFICE_BACKEND_PORT}"
+    env_file:
+      - ./Adele-Backoffice/backend/.env
+      - .env
+    environment:
+      - SHARED_DOCS_PATH=/documents
+      - MONGO_URI=mongodb://mongodb:27017
+      - FUNNEL_URI=http://localhost:12900/v1/tasks
+      - FRONTEND_URI=http://adele-backoffice-frontend:4200
+      - MINIO_URI=localhost:10000
+      - SI_API_URI=http://localhost:5100/sda
+      - REMS_API=https://rems.tre.biodata.pt/api
+      - MAILGUN_URI=https://api.mailgun.net/v3/sandbox9c29e10892be408da2611001fd406c3d.mailgun.org/messages
+    volumes:
+      - tre-shared-documents:/documents
+    depends_on:
+      - mongodb
+    networks:
+      - backoffice_frontend_backend
+      - backend_db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${CONTAINER_BACKOFFICE_BACKEND_PORT}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  adele-website-frontend:
+    build:
+      context: ./Adele-Website/TRE-BIODATA
+      dockerfile: Dockerfile.frontend
+    container_name: adele-website-frontend
+    ports:
+      - "${WEBSITE_FRONTEND_PORT}:80"
+    depends_on:
+      - adele-website-backend
+    networks:
+      - website_frontend_backend
+
+  adele-website-backend:
+    build:
+      context: ./Adele-Website/backend
+      dockerfile: Dockerfile
+    container_name: adele-website-backend
+    ports:
+      - "${WEBSITE_BACKEND_PORT}:${WEBSITE_BACKEND_PORT}"
+    env_file:
+      - ./Adele-Website/backend/.env
+      - .env
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+    depends_on:
+      - mongodb
+    networks:
+      - website_frontend_backend
+      - backend_db
+
+  
+
+volumes:
+  adele_mongo_data:
+  tre-shared-documents:
+
+networks:
+  backoffice_frontend_backend:
+    driver: bridge
+  backend_db:
+    driver: bridge
+  website_frontend_backend:
+    driver: bridge
