@@ -25,6 +25,6 @@ getQueueFiles() {
   }
 
   processFile(form : FormData) {
-    return this.http.post(`${this.apiUri}/api/si/ingest`, form);
+    return this.http.post(`${this.apiUri}/api/si/ingest`, form, { withCredentials: true });
   }
 }

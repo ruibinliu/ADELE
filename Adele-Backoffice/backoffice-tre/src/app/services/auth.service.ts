@@ -16,11 +16,11 @@ export class AuthService {
   }
 
   login(username: string, password: string) {
-    return this.http.post<any>(`${this.apiUri}/api/user/login`, { username, password }).pipe(
+    return this.http.post<any>(`${this.apiUri}/api/user/login`, { username, password }, { withCredentials: true }).pipe(
       tap(res => {
         this.role = res.role;
         this.username = res.username;
-        this.name= res.name;
+        this.name = res.name;
         localStorage.setItem('auth_role', res.role);
         localStorage.setItem('auth_username', res.username);
         localStorage.setItem('auth_name', res.name);

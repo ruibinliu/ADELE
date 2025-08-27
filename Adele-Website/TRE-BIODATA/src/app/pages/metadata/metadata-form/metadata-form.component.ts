@@ -41,30 +41,30 @@ export class MetadataFormComponent implements OnInit {
   ) {
         // Initialize dataset form with fields from the HTML
     this.datasetForm = this.fb.group({
-      title: ['Test Dataset Title', Validators.required],
-      description: ['This is a test description of the dataset.', Validators.required],
-      theme_uri: ['https://publications.europa.eu/resource/authority/data-theme/HEAL', Validators.required],
-      theme_label: ['Health', Validators.required],
-      publisher_name: ['Test Publisher Org', Validators.required],
-      publisher_identifier: ['https://ror.org/02q7abn51', Validators.required],
-      version: ['1.0', Validators.required],
-      issued_date: ['2024-01-01', Validators.required],
-      modified_date: ['2024-05-01'],
-      license: ['https://creativecommons.org/licenses/by/4.0/', Validators.required],
-      contact_email: ['contact@example.org', [Validators.required, Validators.email]],
-      contact_name: ['John Doe', Validators.required],
-      contact_uid: ['https://orcid.org/0000-0002-1825-0097'],
-      keywords: ['health, genomics, COVID-19'],
+      title: ['', Validators.required],
+      description: ['', Validators.required],
+      theme_uri: ['', Validators.required],
+      theme_label: ['', Validators.required],
+      publisher_name: ['', Validators.required],
+      publisher_identifier: ['', Validators.required],
+      version: ['', Validators.required],
+      issued_date: ['', Validators.required],
+      modified_date: [''],
+      license: ['', Validators.required],
+      contact_email: ['', [Validators.required, Validators.email]],
+      contact_name: ['', Validators.required],
+      contact_uid: [''],
+      keywords: [''],
     });
 
-    // Initialize distribution form with default test values
+    // Initialize distribution form with placeholder values
     this.distributionForm = this.fb.group({
-      title: ['CSV Format'],
-      media_type: ['text/csv', Validators.required],
-      publisher_name: ['Test Publisher Org', Validators.required],
-      publisher_identifier: ['https://ror.org/02q7abn51', Validators.required],
-      version: ['1.0'],
-      description: ['This is a test CSV file for the dataset.']
+      title: [''],
+      media_type: ['', Validators.required],
+      publisher_name: ['', Validators.required],
+      publisher_identifier: ['', Validators.required],
+      version: [''],
+      description: ['']
     });
   }
 
@@ -150,17 +150,17 @@ export class MetadataFormComponent implements OnInit {
     });
     console.log('Dataset Data:', this.datasetData);
     console.log('Distributions Data:', this.distributionsData);
-    this.metadataUploadService.uploadMetadata(this.datasetData, this.distributionsData).subscribe(
-      (response:any) => {
+    this.metadataUploadService.uploadMetadata(this.datasetData, this.distributionsData).subscribe({
+      next: (response: any) => {
         console.log('Metadata submitted successfully:', response);
         const datasetUri = response.dataset_uri;
         const distributionUris = response.distributions_uri;
         this.goToNextPage(datasetUri, distributionUris);
       },
-      (error) => {
+      error: (error) => {
         console.error('Error submitting metadata:', error);
       }
-    );
+    });
   }
 
   removeDistribution(index: number): void {
@@ -184,6 +184,7 @@ export class MetadataFormComponent implements OnInit {
     this.projectService.updateProject(this.project.id, updateValue).subscribe({
       next: () => {
         console.log('updated');
+        this.project.status = 'M-AR';
         this.ngOnInit();
       }
     });

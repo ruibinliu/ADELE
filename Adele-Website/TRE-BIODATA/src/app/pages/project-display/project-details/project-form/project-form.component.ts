@@ -43,7 +43,7 @@ export class ProjectFormComponent {
     });
 
     const defaultExpirationDate = new Date();
-    defaultExpirationDate.setFullYear(defaultExpirationDate.getFullYear() + 5); // Default to 5 years from now
+    defaultExpirationDate.setFullYear(defaultExpirationDate.getFullYear() + 50); // Default to 50 years from now
 
     this.projectForm = this.fb.group({
       id: new FormControl('new'),
@@ -121,6 +121,10 @@ export class ProjectFormComponent {
       );
       console.log('Invalid controls:', invalidControls);
     });
+  }
+
+  contactAdmin() {
+    alert('This feature is not available right now, please contact INESC-ID services directly.');
   }
 
 

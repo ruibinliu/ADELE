@@ -1,6 +1,7 @@
 services:
   mongodb:
-    image: mongo:8.0
+    image: mongo:latest
+    command: ["mongod", "--bind_ip_all", "--port", "27017"]
     container_name: adele-mongodb
     restart: always
     ports:
@@ -9,7 +10,7 @@ services:
       #- ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
       - adele_mongo_data:/data/db
     healthcheck:
-      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -35,7 +36,7 @@ services:
     networks:
       - backoffice_frontend_backend
     environment:
-      - BACKEND_URL=http://localhost:${BACKOFFICE_BACKEND_PORT}
+      - BACKEND_URL=http://localhost:${BACKOFFICE_FRONTEND_PORT}
 
 
   adele-backoffice-backend:
@@ -50,13 +51,6 @@ services:
       - .env
     environment:
       - SHARED_DOCS_PATH=/documents
-      - MONGO_URI=mongodb://mongodb:27017
-      - FUNNEL_URI=http://localhost:12900/v1/tasks
-      - FRONTEND_URI=http://adele-backoffice-frontend:4200
-      - MINIO_URI=localhost:10000
-      - SI_API_URI=http://localhost:5100/sda
-      - REMS_API=https://rems.tre.biodata.pt/api
-      - MAILGUN_URI=https://api.mailgun.net/v3/sandbox9c29e10892be408da2611001fd406c3d.mailgun.org/messages
     volumes:
       - tre-shared-documents:/documents
     depends_on:
@@ -65,7 +59,7 @@ services:
       - backoffice_frontend_backend
       - backend_db
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${CONTAINER_BACKOFFICE_BACKEND_PORT}"]
+      test: ["CMD", "curl", "-f", "http://localhost:${BACKOFFICE_BACKEND_PORT}/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -99,6 +93,11 @@ services:
     networks:
       - website_frontend_backend
       - backend_db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${WEBSITE_BACKEND_PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   
 

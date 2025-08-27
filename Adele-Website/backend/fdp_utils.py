@@ -101,14 +101,17 @@ class TREDistribution(DCATDistribution):
         return force_literal_field(value)
 
 
-def create_and_publish_metadata(dataset_info: Dict[str, Any], distributions_info: List[Dict[str, Any]]) -> None:
+
+def create_and_publish_metadata(dataset_info: Dict[str, Any], distributions_info: List[Dict[str, Any]]) -> Dict[str, Any]:
+    # DEBUG: Start metadata creation
+    print("DEBUG: Starting create_and_publish_metadata")
 
     # Prepare contact point if present
     contact_uri = None
     contact = None
     if "contact_point" in dataset_info and isinstance(dataset_info["contact_point"], list):
+        print("DEBUG: Found contact_point in dataset_info")
         contact_uri = URIRef(dataset_info["contact_point"])
-        # Optionally, you can parse more contact info from JSON if available
         contact = VCard(
             hasEmail=[dataset_info.get("contact_email", "mailto:unknown@example.com")],
             full_name=[dataset_info.get("contact_name", "Unknown")],
@@ -117,7 +120,12 @@ def create_and_publish_metadata(dataset_info: Dict[str, Any], distributions_info
 
     publisher = Agent(name=[dataset_info.get("publisher.name", "BioData.pt")], identifier=dataset_info.get("publisher.identifier", "https://ror.org/02q7abn51"))
 
-    # Prepare dataset definition
+    #clean extra spaces before text in URI fields
+    contact_uri = contact_uri.strip() if contact_uri else None
+    dataset_info["description"] = dataset_info["description"].strip()
+    dataset_info["title"] = dataset_info["title"].strip()
+    dataset_info["license"] = dataset_info["license"].strip()
+
     dataset_definition = {
         "contact_point": [FDP_URI + "/tre/contact" + str(contact_uri)] if contact_uri else [],
         "description": [LiteralField(value=dataset_info["description"])],
@@ -133,15 +141,18 @@ def create_and_publish_metadata(dataset_info: Dict[str, Any], distributions_info
 
     dataset_subject = URIRef(FDP_URI + "/dataset/" + str(uuid.uuid4()))
     try:
+        print("DEBUG: Validating dataset definition")
         dataset = TREDataset(**dataset_definition)
     except ValidationError as e:
         print("Dataset validation error:", e)
-        return
+        return {"error": f"Dataset validation error: {e}"}
 
+    print("DEBUG: Building dataset graph")
     dataset_graph = dataset.to_graph(dataset_subject)
     dataset_graph.add((dataset_subject, RDF.type, DCAT.Dataset))
     # Add theme if present
     if "theme" in dataset_info:
+        print("DEBUG: Adding theme to dataset graph")
         theme = dataset_info["theme"]
         theme_uri = URIRef(theme["uri"])
         dataset_graph.add((dataset_subject, DCAT.theme, theme_uri))
@@ -149,13 +160,12 @@ def create_and_publish_metadata(dataset_info: Dict[str, Any], distributions_info
         pref_labels = theme.get("prefLabel", {})
         for lang, label in pref_labels.items():
             dataset_graph.add((theme_uri, SKOS.prefLabel, Literal(label, lang=lang)))
-
         if "en" in pref_labels:
-            dataset_graph.add((theme_uri, RDFS.label, Literal(pref_labels["en"])))
-
+            dataset_graph.add((theme_uri, RDFS.label, Literal(pref_labels["en"])) )
 
     # Add contact point if present
     if contact and contact_uri:
+        print("DEBUG: Adding contact to dataset graph")
         contact_graph = contact.to_graph(contact_uri)
         dataset_graph += contact_graph
 
@@ -164,19 +174,34 @@ def create_and_publish_metadata(dataset_info: Dict[str, Any], distributions_info
     fdp_user = FDP_ADMIN_USERNAME
     fdp_pass = FDP_ADMIN_PASSWORD
 
-    fdpclient = fairclient.fdpclient.FDPClient(base_uri=fdp_baseuri, username=fdp_user, password=fdp_pass)
-
+    print("DEBUG: Initializing FDPClient")
+    try:
+        fdpclient = fairclient.fdpclient.FDPClient(base_url=fdp_baseuri, username=fdp_user, password=fdp_pass)
+    except Exception as e:
+        print("FDPClient initialization error:", e)
+        return {"error": f"FDPClient initialization error: {e}"}
 
     # Upload dataset last, after distributions are created
     dataset_graph.add((dataset_subject, DCTERMS.isPartOf, URIRef(fdp_parent_catalog)))
-    print(dataset_graph.serialize(format="turtle", encoding="utf-8").decode("utf-8"))
-    new_dataset = fdpclient.create_and_publish("dataset", dataset_graph)
+    print("DEBUG: Serializing dataset graph")
+    try:
+        print(dataset_graph.serialize(format="turtle", encoding="utf-8").decode("utf-8"))
+    except Exception as e:
+        print("Dataset graph serialization error:", e)
+        return {"error": f"Dataset graph serialization error: {e}"}
+
+    print("DEBUG: Publishing dataset to FDP")
+    try:
+        new_dataset = fdpclient.create_and_publish("dataset", dataset_graph)
+    except Exception as e:
+        print("Dataset publish error:", e)
+        return {"error": f"Dataset publish error: {e}"}
     print("Dataset FDP ID:", new_dataset)
-    # Save dataset to MongoDB
 
     # Prepare and upload distributions
     distribution_fdp_ids = []
     for dist_info in distributions_info:
+        print("DEBUG: Processing distribution", dist_info)
         distribution_subject = URIRef(FDP_URI + "/distribution/" + str(uuid.uuid4()))
         dist_definition = {
             "publisher": [publisher],
@@ -187,23 +212,32 @@ def create_and_publish_metadata(dataset_info: Dict[str, Any], distributions_info
             "has_version": dist_info.get("has_version", "1.0"),
         }
         try:
+            print("DEBUG: Validating distribution definition")
             distribution = TREDistribution(**dist_definition)
         except ValidationError as e:
             print("Distribution validation error:", e)
+            distribution_fdp_ids.append({"error": f"Distribution validation error: {e}"})
             continue
 
+        print("DEBUG: Building distribution graph")
         distribution_graph = distribution.to_graph(distribution_subject)
-        # Add isPartOf link to dataset
         distribution_graph.add((distribution_subject, DCTERMS.isPartOf, new_dataset))
-        # Upload distribution
-        print(distribution_graph.serialize(format="turtle", encoding="utf-8").decode("utf-8"))
-        distribution_fdp_id = fdpclient.create_and_publish(resource_type="distribution", metadata=distribution_graph)
+        try:
+            print("DEBUG: Serializing distribution graph")
+            print(distribution_graph.serialize(format="turtle", encoding="utf-8").decode("utf-8"))
+        except Exception as e:
+            print("Distribution graph serialization error:", e)
+            distribution_fdp_ids.append({"error": f"Distribution graph serialization error: {e}"})
+            continue
+        print("DEBUG: Publishing distribution to FDP")
+        try:
+            distribution_fdp_id = fdpclient.create_and_publish(resource_type="distribution", metadata=distribution_graph)
+        except Exception as e:
+            print("Distribution publish error:", e)
+            continue
         print("Distribution FDP ID:", distribution_fdp_id)
-        # Save distribution to MongoDB
-
         distribution_fdp_ids.append(distribution_fdp_id)
 
-
-    print("Distribution FDP IDs:", distribution_fdp_ids)
+    print("DEBUG: Distribution FDP IDs:", distribution_fdp_ids)
     return {"dataset_uri": new_dataset, "distribution_uri": distribution_fdp_ids}
 

@@ -36,10 +36,15 @@
       <!-- PII -->
       <div class="mb-3">
         <mat-form-field class="w-100">
-          <mat-label>Responsable (email)</mat-label>
+          <mat-label>Principal Investigator (email)</mat-label>
           <input matInput type="email" formControlName="responsable" required>
           <mat-icon matSuffix>person</mat-icon>
-          <mat-error *ngIf="isInvalid('responsable')">Responsable EMAIL is required.</mat-error>
+          <mat-error *ngIf="isInvalid('responsable')">Principal Investigator EMAIL is required.</mat-error>
+          <!--
+          Represents the individual who will be responsible for receiving notifications related to this project.
+          This person will be the main point of contact for all project notifications.
+          -->
+          <mat-hint>Email for receiving notifications about this project.</mat-hint>
         </mat-form-field>
       </div>
 
@@ -121,9 +126,9 @@
         <p class="form-control-plaintext">{{ project.organization || 'N/A' }}</p>
       </div>
 
-      <!-- Responsable -->
+      <!-- Principal Investigator -->
       <div class="mb-3">
-        <strong><mat-icon class="me-2">person</mat-icon> Responsable:</strong>
+        <strong><mat-icon class="me-2">person</mat-icon> Principal Investigator:</strong>
         <p class="form-control-plaintext">{{ project.responsable || 'N/A' }}</p>
       </div>
 
@@ -149,7 +154,7 @@
 
   <!-- Contact Admin -->
   <div class="text-center mt-4">
-    <button class="btn btn-outline-danger">
+    <button class="btn btn-outline-danger" (click)="contactAdmin()">
       <mat-icon class="me-1">support_agent</mat-icon> Contact Administrator
     </button>
   </div>
@@ -190,9 +195,9 @@
         <p class="form-control-plaintext">{{ project.organization || 'N/A' }}</p>
       </div>
 
-      <!-- Responsable -->
+      <!-- Principal Investigator -->
       <div class="mb-3">
-        <strong><mat-icon class="me-2">person</mat-icon> Responsable:</strong>
+        <strong><mat-icon class="me-2">person</mat-icon> Principal Investigator:</strong>
         <p class="form-control-plaintext">{{ project.responsable || 'N/A' }}</p>
       </div>
 

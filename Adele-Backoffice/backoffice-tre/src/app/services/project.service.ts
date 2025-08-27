@@ -26,19 +26,19 @@ export class ProjectService {
   backendUri = environment.backendUrl + '/api';
 
   getProjects(){
-    return this.http.get(this.backendUri + '/projects')
+    return this.http.get(this.backendUri + '/projects', { withCredentials: true })
   }
   
   getProject(id: string){
-    return this.http.get<Project>(`${this.backendUri}/projects/${id}`)
+    return this.http.get<Project>(`${this.backendUri}/projects/${id}`, { withCredentials: true })
   }
     
   createProject(project: Project){
-    return this.http.post<Project>(`${this.backendUri}/projects`, project)
+    return this.http.post<Project>(`${this.backendUri}/projects`, project, { withCredentials: true })
   }
 
   updateProjectStatus(id: string, newStatus: string){
-    return this.http.patch<Project>(`${this.backendUri}/projects/${id}`, { status: newStatus })
+    return this.http.patch<Project>(`${this.backendUri}/projects/${id}`, { status: newStatus }, { withCredentials: true })
   }
 }
 

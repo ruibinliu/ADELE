@@ -44,18 +44,25 @@ def uploadMetadata():
 
     audit_logger.info(f"FDP_UPLOAD | user_id={user_id} | IP={user_ip} | data_keys={list(form_data.keys())}")
 
-    if isinstance(response, dict) and "error" in response:
+    if response is None or not isinstance(response, dict):
+        error_msg = "FDP service did not return a valid response."
+        print(f"ERROR: {error_msg} Response: {response}")
+        audit_logger.error(f"FDP_UPLOAD_FAIL | user_id={user_id} | IP={user_ip} | error={error_msg}")
+        return jsonify({"error": error_msg}), 500
+
+    if "error" in response:
         print(f"ERROR: Failed to upload metadata: {response['error']}")
         audit_logger.error(f"FDP_UPLOAD_FAIL | user_id={user_id} | IP={user_ip} | error={response['error']}")
         return jsonify(response), 500
-    else:
-        formatted_response = {
-            "dataset_uri": str(response["dataset_uri"]),
-            "distributions_uri": [str(uri) for uri in response["distribution_uri"]]
-        }
-        print("DEBUG: Metadata uploaded successfully")
-        audit_logger.info(f"FDP_UPLOAD_COMPLETE | user_id={user_id} | IP={user_ip} | dataset_id={formatted_response.get('dataset_uri', 'unknown')}")
-        return jsonify(formatted_response), 200
+
+    print("DEBUG: Metadata upload response:", response)
+    formatted_response = {
+        "dataset_uri": str(response.get("dataset_uri", "")),
+        "distributions_uri": [str(uri) for uri in response.get("distribution_uri", [])]
+    }
+    print("DEBUG: Metadata uploaded successfully")
+    audit_logger.info(f"FDP_UPLOAD_COMPLETE | user_id={user_id} | IP={user_ip} | dataset_id={formatted_response.get('dataset_uri', 'unknown')}")
+    return jsonify(formatted_response), 200
 
 
 @fdp_bp.route("/datasets", methods=["GET"])

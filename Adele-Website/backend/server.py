@@ -60,6 +60,12 @@ app.register_blueprint(fdp_bp, url_prefix='/fdp')  # Optional prefix
 app.register_blueprint(si_bp, url_prefix='/si')  
 app.register_blueprint(legal_docs_bp, url_prefix='/files')
 
+## Health Check
+@app.route('/health')
+def health_check():
+    """Health check endpoint"""
+    return jsonify({"status": "healthy"}), 200
+
 ## Authentication and Authorization ##
 @app.route('/login')
 def login():
@@ -235,7 +241,6 @@ def get_projects():
 
 @app.route('/projects/<string:project_id>', methods=['GET'])
 def get_project(project_id):
-    #TODO: Add user authentication
     """Return a specific project"""
 
     id_token = request.cookies.get('id_token')
@@ -299,45 +304,6 @@ def update_project(project_id):
     projectDB.update_one({"_id": ObjectId(project_id), "owner": user_id}, {"$set": project_data})
     return jsonify({"message": "Project updated successfully"})
 
-
-
-
-
-
-@app.route('/rems/create_resource', methods=['POST'])
-def create_resource():
-    # TODO: Adapt to other organizations and add process to add user to the organization
-    organization_id = "organization_example"
-    resource_id = "pt:biodata.pt:tre:website_resource" 
-
-    # Add user to the organization
-
-    # Create resource
-
-    rems_api_uri = REMS_URI + "/resources/create"
-
-    #"content-type: application/json" \
-    #-H "x-rems-api-key: $API_KEY" \
-    #-H "x-rems-user-id: $USER_ID" \
-
-    headers = {
-        "content-type": "application/json",
-        "x-rems-api-key": REMS_API_KEY,
-        "x-rems-user-id": REMS_USER_ID
-    }
-
-    response =  requests.post(rems_api_uri, headers=headers, json={
-            "resid": resource_id,
-            "organization": {
-                "organization/id": organization_id # example organization
-            },
-            "licenses": [1] # license id = 1 => Data processing agreement
-        })
-    
-    print(response.json())
-            
-
-    return jsonify(response.json())
 
 
 @app.route('/pipelines', methods=['GET'])

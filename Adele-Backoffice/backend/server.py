@@ -18,6 +18,12 @@ CORS(app, supports_credentials=True)
 
 app.secret_key = os.environ.get('SESSION_SECRET_KEY', 'default-secret-key')
 
+app.config.update(
+    SESSION_COOKIE_SAMESITE='None',
+    SESSION_COOKIE_SECURE=False,   # only for local HTTP; switch to True on HTTPS
+    SESSION_COOKIE_HTTPONLY=True,
+)
+
 app.register_blueprint(file_handling_bp, url_prefix='/files')
 app.register_blueprint(task_management_bp, url_prefix='/api')
 app.register_blueprint(si_management_bp, url_prefix='/api/si')
@@ -42,6 +48,12 @@ def get_user_info():
     user_id = session.get('user_id', 'unknown')
     username = session.get('username', 'unknown')
     return user_id, username
+
+## Health Check
+@app.route('/health')
+def health_check():
+    """Health check endpoint"""
+    return jsonify({"status": "healthy"}), 200
 
 @app.route("/api/projects", methods=["GET"])
 def get_projects():

@@ -13,18 +13,18 @@ export class PipelineService {
    backendUri = environment.backendUrl + '/api';
 
   getPipelines() {
-    return this.http.get(`${this.backendUri}/pipelines`);
+    return this.http.get(`${this.backendUri}/pipelines`, { withCredentials: true });
   }
 
   updatePipeline(id: number, data: any) {
-    return this.http.put(`${this.backendUri}/pipelines/${id}`, data);
+    return this.http.put(`${this.backendUri}/pipelines/${id}`, data, { withCredentials: true });
   }
 
   createPipeline(data: any) {
-    return this.http.post(`${this.backendUri}/pipelines`, data);
+    return this.http.post(`${this.backendUri}/pipelines`, data, { withCredentials: true });
   }
 
   deletePipeline(id: number) {
-    return this.http.delete(`${this.backendUri}/pipelines/${id}`);
+    return this.http.delete(`${this.backendUri}/pipelines/${id}`, { withCredentials: true });
   }
 }
