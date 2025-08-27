@@ -1,4 +1,4 @@
-# Adele Backoffice – Full Stack Application
+# Adele TRE
 
 This project is a containerized full-stack web application built with:
 
@@ -18,6 +18,7 @@ This project is a containerized full-stack web application built with:
 
 ### Quick Start
 
+### Adele-Website Development
 1. **Clone the repository:**
 
     ```bash
@@ -55,32 +56,6 @@ This project is a containerized full-stack web application built with:
      - validator: validator123
      Change passwords in production for security.
 
-
-## Global Docker Compose Setup
-
-To run both Adele-Backoffice and Adele-Website together, with MongoDB and shared documents:
-
-1. Make sure your `.env` file is set up with all required variables for both projects.
-2. Use the provided `docker-compose.yml` (in the project root) which includes services for:
-    - `adele-backoffice-frontend` (Angular + Nginx)
-    - `adele-backoffice-backend` (Flask)
-    - `adele-website-frontend` (Angular + Nginx)
-    - `adele-website-backend` (Flask)
-    - `mongodb` (MongoDB)
-    - `tre-shared-documents` (shared volume)
-
-3. Build and start all services:
-    ```bash
-    docker compose up --build
-    ```
-
-4. Access the apps at the URLs above.
-
----
-
-
-## Development
-
 ### Adele-Website Development
 
 To run the Adele-Website frontend locally:
@@ -114,6 +89,28 @@ python server.py
 ```
 
 The API will be available at [http://localhost:8081](http://localhost:8081).
+
+---
+
+## Global Docker Compose Setup
+
+To run both Adele-Backoffice and Adele-Website together, with MongoDB and shared documents:
+
+1. Make sure your `.env` file is set up with all required variables for both projects.
+2. Use the provided `docker-compose.yml` (in the project root) which includes services for:
+    - `adele-backoffice-frontend` (Angular + Nginx)
+    - `adele-backoffice-backend` (Flask)
+    - `adele-website-frontend` (Angular + Nginx)
+    - `adele-website-backend` (Flask)
+    - `mongodb` (MongoDB)
+    - `tre-shared-documents` (shared volume)
+
+3. Build and start all services:
+    ```bash
+    docker compose up --build
+    ```
+
+4. Access the apps at the URLs above.
 
 ---
 
