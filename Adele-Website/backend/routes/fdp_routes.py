@@ -1,15 +1,14 @@
-import utils
 from flask import Blueprint, request, jsonify
 import requests
-import settings
-import fdp_utils
+from config.settings import *
+from utils import fdp_utils, util
 from pymongo import MongoClient
 import logging
 import os
 
 fdp_bp = Blueprint('fdp', __name__)
 
-client = MongoClient(settings.MONGO_URI)
+client = MongoClient(MONGO_URI)
 dbMetadata = client["metadata"]
 datasetDB = dbMetadata["dataset"]
 distributionDB = dbMetadata["distribution"]
@@ -40,7 +39,7 @@ def uploadMetadata():
     response = fdp_utils.create_and_publish_metadata(form_data["dataset"], form_data["distributions"])
 
     user_ip = request.remote_addr
-    user_id = utils.get_user_id(request.cookies.get('id_token')) if hasattr(utils, "get_user_id") else "unknown"
+    user_id = util.get_user_id(request.cookies.get('id_token')) if hasattr(util, "get_user_id") else "unknown"
 
     audit_logger.info(f"FDP_UPLOAD | user_id={user_id} | IP={user_ip} | data_keys={list(form_data.keys())}")
 
@@ -73,11 +72,11 @@ def getDataset():
     print("DEBUG: Received request to get dataset")
     
     user_ip = request.remote_addr
-    user_id = utils.get_user_id(request.cookies.get('id_token')) if hasattr(utils, "get_user_id") else "unknown"
+    user_id = util.get_user_id(request.cookies.get('id_token')) if hasattr(util, "get_user_id") else "unknown"
     audit_logger.info(f"FDP_GET_DATASETS | user_id={user_id} | IP={user_ip}")
 
     # Send the JSON-LD data to the FDP
-    response = requests.get(f"{settings.FDP_TRE_CATALOG_URI}", headers={"Accept": "text/turtle"})
+    response = requests.get(f"{FDP_TRE_CATALOG_URI}", headers={"Accept": "text/turtle"})
     audit_logger.info(f"FDP_GET_DATASETS_RESPONSE | user_id={user_id} | IP={user_ip} | status={response.status_code}")
     
     if response.status_code == 200:

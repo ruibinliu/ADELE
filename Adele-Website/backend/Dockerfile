@@ -7,7 +7,6 @@ WORKDIR /backend
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# FIX
 RUN git clone https://github.com/FracassandoCasualmente/SeMPyRO.git /backend/SeMPyRO
 WORKDIR /backend/SeMPyRO
 RUN pip install .

@@ -70,7 +70,12 @@
      <!-- Metadata Documents -->
     <app-metadata-fragment [project]="project" *ngIf="this.currentPhaseIndex > 1"></app-metadata-fragment>
 
- <!-- Validation Buttons -->
+
+    <!-- Data Upload Section -->
+
+    <app-data-upload-fragment [project]="project" *ngIf="this.currentPhaseIndex > 2 && project.files"></app-data-upload-fragment>
+
+    <!-- Validation Buttons -->
     <div class="validation-actions" *ngIf="canValidateCurrentStep()">
       <button class="validate-btn" (click)="validateCurrentStep()">
         <mat-icon>check_circle</mat-icon>Validate Step

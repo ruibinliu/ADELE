@@ -8,10 +8,12 @@ import { AgreementsFragmentComponent } from '../projects/agreements-fragment/agr
 import { MetadataFragmentComponent } from '../projects/metadata-fragment/metadata-fragment.component';
 import { Router } from '@angular/router';
 import { throwDialogContentAlreadyAttachedError } from '@angular/cdk/dialog';
+import { DataUploadFragmentComponent } from '../projects/data-upload-fragment/data-upload-fragment.component';
+
 
 @Component({
   selector: 'app-project-details',
-  imports: [CommonModule, MatIconModule, AgreementsFragmentComponent, MetadataFragmentComponent],
+  imports: [CommonModule, MatIconModule, AgreementsFragmentComponent, MetadataFragmentComponent, DataUploadFragmentComponent],
   templateUrl: './project-details.component.html',
   styleUrl: './project-details.component.scss'
 })

@@ -22,4 +22,26 @@ export class FileUploadService {
       withCredentials: true
     });
   }
+
+  getChecksum$(): Observable<string> {
+    return this.http.get(`${this.backendUri}/si/crypto/public-key-checksum`, {
+      responseType: 'text',
+      withCredentials: true
+    });
+  }
+
+  downloadPublicKey$(): Observable<Blob> {
+    return this.http.post(`${this.backendUri}/si/crypto/public-key/download`, {}, {
+      responseType: 'blob',
+      withCredentials: true,
+    });
+  }
+
+   getFilesUploaded(project_id: string) {
+    const form = new FormData();
+    form.append('project_id', project_id);
+    return this.http.post(`${this.backendUri}/si/files/list`, form, {
+      withCredentials: true,
+    });
+  }
 }

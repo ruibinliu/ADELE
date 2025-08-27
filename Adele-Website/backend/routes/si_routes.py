@@ -1,25 +1,31 @@
-from datetime import timedelta
-from minio import Minio
-import utils
-from flask import Blueprint, request, jsonify
+from datetime import datetime, timedelta
+from minio import Minio, S3Error
+from flask import Blueprint, make_response, request, jsonify, send_file
 import requests
-import settings
-import fdp_utils
+from config.settings import *
+from utils import fdp_utils, util
 from pymongo import MongoClient
 import jwt
 import logging
 import os
 from bson import ObjectId
+import subprocess
+import tempfile
+import shutil
 
 si_bp = Blueprint('si', __name__)
 
 # Initialize MongoDB client
-client = MongoClient(settings.MONGO_URI)
+client = MongoClient(MONGO_URI)
 dbProject = client["project"]
 projectDB = dbProject["project_details"]
 
 filesDB = dbProject["files"]
 
+PUBLIC_KEY_PATH = "/backend/config/c4gh.pub"
+CHECKSUM_PATH = "/backend/config/c4gh.pub.pem.sha256"
+
+INBOX_BUCKET = "inbox"
 
 # === Audit Logger Setup (reuse the same file as server.py) ===
 AUDIT_LOG_FILE = os.path.join(os.path.dirname(__file__), '..', 'audit.log')
@@ -74,7 +80,7 @@ def get_files():
 
     try:
         response = requests.get(
-            f"{settings.DOWNLOAD_S3}/metadata/datasets/{dataset_id}/files",
+            f"{DOWNLOAD_S3}/metadata/datasets/{dataset_id}/files",
             headers=headers,
             timeout=10
         )
@@ -121,7 +127,7 @@ def get_file(file_id):
 
     try:
         response = requests.get(
-            f"{settings.DOWNLOAD_S3}/files/{file_id}",
+            f"{DOWNLOAD_S3}/files/{file_id}",
             headers=headers,
             timeout=10
         )
@@ -159,11 +165,12 @@ def generate_presigned_uri(username, filename):
     
     # Initialize MinIO client
     minio_client = Minio(
-        settings.MINIO_URI,
-        access_key=settings.MINIO_SERVICE_ACCOUNT,
-        secret_key=settings.MINIO_SERVICE_ACCOUNT_SECRET,
-        secure=False
-    )
+        MINIO_ENDPOINT, 
+        access_key=MINIO_ACCESS_KEY,
+        secret_key=MINIO_SECRET_KEY,
+        secure=False # Change to TRUE if HTTPS is required
+    ) 
+
     if current_user != username:
         return jsonify({"error": "Unauthorized access"}), 403
 
@@ -185,14 +192,18 @@ def generate_presigned_uri(username, filename):
 @si_bp.route("/upload/file/<filename>", methods=["POST"])
 def upload_file(filename):
     """
-    Upload a file to the MinIO bucket.
+    Upload a file using sda-cli.
     """
     user_ip = request.remote_addr
     access_token = request.cookies.get('access_token')
-    project_id = request.form.get('project_id')
     if not access_token:
         audit_logger.warning(f"SI_UPLOAD_FILE | MISSING_ACCESS_TOKEN | IP={user_ip}")
-        return jsonify({"error": "Missing access token in cookies"}), 401
+        return jsonify({"error": "Missing access token in cookies"}), 401    
+    
+    project_id = request.form.get('project_id')
+    if not project_id:
+        audit_logger.warning(f"SI_UPLOAD_FILE | MISSING_PROJECT_ID | IP={user_ip}")
+        return jsonify({"error": "Missing project ID"}), 400
 
     # Decode the JWT to get the current user
     try:
@@ -202,10 +213,6 @@ def upload_file(filename):
     except Exception as e:
         audit_logger.error(f"SI_UPLOAD_FILE | INVALID_JWT | IP={user_ip} | error={str(e)}")
         return jsonify({"error": f"Invalid access token: {str(e)}"}), 401
-    
-    if not project_id:
-        audit_logger.warning(f"SI_UPLOAD_FILE | MISSING_PROJECT_ID | user_id={current_user} | IP={user_ip}")
-        return jsonify({"error": "Missing project ID"}), 400
 
     # Check if the file is provided in the request
     if 'file' not in request.files:
@@ -217,35 +224,17 @@ def upload_file(filename):
         audit_logger.warning(f"SI_UPLOAD_FILE | EMPTY_FILENAME | user_id={current_user} | IP={user_ip}")
         return jsonify({"error": "No selected file"}), 400
 
-    #filename = f"{current_user}/{project_id}/{filename}"
-
-    #Contact SDA-API to upload the file for ingestion
-    """ sda_api_uri = f"{settings.SDA_API_URI}/upload/file/{filename}"
-    try:
-        response = requests.post(
-            sda_api_uri,
-            files={'file': file},
-            user=current_user, # update s3cmd marta.felix@lifescience-ri.eu 
-            headers={'Authorization': f"Bearer {access_token}"}, #access_token
-            timeout=10
-        )
-        response.raise_for_status()
-        audit_logger.info(f"SI_UPLOAD_FILE | FILE_UPLOADED | user_id={current_user} | filename={filename} | IP={user_ip}")
-    except requests.RequestException as e:
-        audit_logger.error(f"SI_UPLOAD_FILE | UPLOAD_FAIL | user_id={current_user} | filename={filename} | IP={user_ip} | error={str(e)}")
-        return jsonify({"error": f"Failed to upload file: {str(e)}"}), 502 """
-
-    #Temporary solution to upload file: upload in tre-shared-documents files between tre and backoffice
-
+    # Insert file record in DB
     file_id = filesDB.insert_one({
-        "filename": filename,
+        "filename": file.filename,
         "user": current_user,
-        "project_id": project_id
+        "project_id": project_id,
+        "upload_time": datetime.now(),
+        "archived": False
     })
+    file_id_str = str(file_id.inserted_id) + ".c4gh"
 
-    file_id = file_id.inserted_id
-
-    audit_logger.info(f"SI_UPLOAD_FILE | FILE_ADDED_TO_DB | user_id={current_user} | file_id={file_id} | IP={user_ip}")
+    audit_logger.info(f"SI_UPLOAD_FILE | FILE_ADDED_TO_DB | user_id={current_user} | file_id={file_id_str} | IP={user_ip}")
 
     PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
     SHARED_BASE_DIR = os.path.abspath(os.path.join(PROJECT_ROOT, "..", "..", "..", "tre-shared-documents"))
@@ -253,10 +242,44 @@ def upload_file(filename):
     if not os.path.exists(TEMP_DIR):
         os.makedirs(TEMP_DIR)
 
-    file_path = os.path.join(TEMP_DIR, file_id)
+    file_path = os.path.join(TEMP_DIR, file_id_str)
     file.save(file_path)
 
+    if not file_path.endswith(".c4gh"):
+        file_path += ".c4gh"
 
+    temp_config = None
+    sda_script = "/backend/config/sda-cli"
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".conf") as temp_config:
+            with open("/backend/config/s3cmd.conf", "r") as base_config:
+                config = base_config.read()
+
+            config = config.replace("ACCESS_TOKEN", access_token)
+            config = config.replace("ACCESS_KEY", current_user.replace("@", "_"))
+            config = config.replace("SECRET_KEY", current_user.replace("@", "_"))
+
+            temp_config.write(config)
+            temp_config_path = temp_config.name
+
+        sda_cmd = [sda_script, "-config", temp_config_path, "upload", file_path]
+        result = subprocess.run(sda_cmd, capture_output=True, text=True)
+        audit_logger.info(f"SI_UPLOAD_FILE | SDA_UPLOAD | stdout={result.stdout} | stderr={result.stderr}")
+
+        if result.returncode != 0:
+            audit_logger.error(f"SI_UPLOAD_FILE | SDA_UPLOAD_FAIL | file={file_path} | error={result.stderr}")
+            return jsonify({"error": f"sda-cli upload failed: {result.stderr}"}), 502
+
+    finally:
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            if temp_config and os.path.exists(temp_config_path):
+                os.remove(temp_config_path)
+        except Exception as e:
+            audit_logger.warning(f"SI_UPLOAD_FILE | TMP_CLEANUP_FAIL | path={file_path} or {temp_config_path} | err={e}")
+
+    # Update project DB as before
     project = projectDB.find_one({"_id": ObjectId(project_id)})
     if not project:
         audit_logger.warning(f"SI_UPLOAD_FILE | PROJECT_NOT_FOUND | user_id={current_user} | project_id={project_id} | IP={user_ip}")
@@ -271,4 +294,74 @@ def upload_file(filename):
 
     audit_logger.info(f"SI_UPLOAD_FILE | FILE_SAVED_LOCALLY | user_id={current_user} | filename={filename} | IP={user_ip}")
 
-    return jsonify({"message": "File uploaded successfully"}), 200
+    return jsonify({
+        "message": "File uploaded successfully via sda-cli",
+        "file_id": file_id_str
+    }), 200
+
+# Download c4gh.pub.pem file
+@si_bp.route('/crypto/public-key/download', methods=['POST'])
+def download_c4gh_pub():
+    user_ip = request.remote_addr
+    current_user = util.get_user_id(request.cookies.get('id_token')) if hasattr(util, "get_user_id") else "unknown"
+
+    audit_logger.info(f"SI_DOWNLOAD_PUB_KEY | user_id={current_user} | IP={user_ip}")
+
+    resp = make_response(send_file(PUBLIC_KEY_PATH, mimetype="text/plain", as_attachment=True, download_name="TRE.pub"))
+    resp.headers["Cache-Control"] = "public, max-age=86400"
+    return resp
+
+
+@si_bp.route("/crypto/public-key-checksum")
+def download_checksum():
+    user_ip = request.remote_addr
+    current_user = util.get_user_id(request.cookies.get('id_token')) if hasattr(util, "get_user_id") else "unknown"
+
+    audit_logger.info(f"SI_DOWNLOAD_PUB_KEY_CHECKSUM | user_id={current_user} | IP={user_ip}")
+
+    with open(CHECKSUM_PATH, "r", encoding="utf-8") as f:
+        text = f.read()    
+
+    resp = make_response(text)
+    resp.mimetype = "text/plain"
+    resp.headers["Cache-Control"] = "public, max-age=86400"
+    return resp
+
+@si_bp.route("/files/list", methods=["POST"])
+def list_uploaded_files():
+    """
+    Get the names and upload times of all files uploaded.
+    """
+    user_ip = request.remote_addr
+    access_token = request.cookies.get('access_token')
+    project_id = request.form.get('project_id')
+
+    audit_logger.info(f"SI_LIST_UPLOADED_FILES | REQUEST_RECEIVED | IP={user_ip}")
+
+    # Decode the JWT to get the current user
+    try:
+        passport = jwt.decode(access_token, options={"verify_signature": False})
+        current_user = passport.get('sub', 'unknown')
+        audit_logger.info(f"SI_LIST_UPLOADED_FILES | JWT_DECODED | user_id={current_user} | IP={user_ip}")
+    except Exception as e:
+        audit_logger.error(f"SI_LIST_UPLOADED_FILES | INVALID_JWT | IP={user_ip} | error={str(e)}")
+        return jsonify({"error": f"Invalid access token: {str(e)}"}), 401
+    
+    if not project_id:
+        audit_logger.warning(f"SI_LIST_UPLOADED_FILES | PROJECT_ID_MISSING | user_id={current_user} | IP={user_ip}")
+        return jsonify({"error": "Project ID is required"}), 400
+
+    # Find all files for the given project ID
+    files = list(filesDB.find({"project_id": project_id, "user": current_user}))
+    audit_logger.info(f"SI_LIST_UPLOADED_FILES | FILES_FOUND | user_id={current_user} | project_id={project_id} | IP={user_ip} | files_count={len(files)}")
+    result = []
+    for f in files:
+        result.append({
+            "file_id": str(f["_id"]),
+            "filename": f.get("filename", ""),
+            "user": f.get("user", ""),
+            "upload_time": f.get("upload_time", "")
+        })
+
+    audit_logger.info(f"SI_LIST_UPLOADED_FILES | SUCCESS | user_id={current_user} | project_id={project_id} | IP={user_ip}")
+    return jsonify({"files": result}), 200

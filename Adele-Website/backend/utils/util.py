@@ -1,5 +1,5 @@
 import requests
-import settings
+from config.settings import *
 import jwt
 from datetime import datetime
 from bson import ObjectId
@@ -21,17 +21,17 @@ def get_fdp_token():
     }
     print(f"DEBUG: Headers for token request: {headers}")
 
-    if not settings.FDP_ADMIN_USERNAME or not settings.FDP_ADMIN_PASSWORD:
+    if not FDP_ADMIN_USERNAME or not FDP_ADMIN_PASSWORD:
         print("ERROR: FDP_ADMIN_USERNAME or FDP_ADMIN_PASSWORD is not set in settings.")
         return None
 
     data = {
-        "email": settings.FDP_ADMIN_USERNAME,
-        "password": settings.FDP_ADMIN_PASSWORD
+        "email": FDP_ADMIN_USERNAME,
+        "password": FDP_ADMIN_PASSWORD
     }
     print(f"DEBUG: Payload for token request: {data}")
 
-    response = requests.post(f"{settings.FDP_URL}/tokens", headers=headers, json=data)
+    response = requests.post(f"{FDP_URL}/tokens", headers=headers, json=data)
     print(f"DEBUG: Response from token endpoint: {response.status_code}, {response.text}")
     
     if response.status_code == 200:
@@ -53,7 +53,7 @@ def get_user_id(id_token):
         return None
     
     try:
-        user = jwt.decode(id_token, settings.CLIENT_SECRET, options={"verify_signature": False, "verify": False}).get("sub") 
+        user = jwt.decode(id_token, CLIENT_SECRET, options={"verify_signature": False, "verify": False}).get("sub") 
         print(user)
         return user
 
@@ -64,4 +64,5 @@ def get_user_id(id_token):
     except jwt.InvalidTokenError:
         print('InvalidTokenError')
         return None
+
 

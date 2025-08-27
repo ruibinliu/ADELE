@@ -22,10 +22,25 @@ export class DataUploadComponent {
   dragActive: boolean = false;
   error_message: string = '';
 
+  uploadedFiles: any[] = [];
+
+  checksumLine = 'Loading…';
+  downloading = false;
+
   constructor(private fileUploadService: FileUploadService) { }
 
   ngOnInit() {
     console.log('Data Upload Component initialized.');
+    this.fileUploadService.getChecksum$().subscribe({
+      next: (checksum) => {
+        this.checksumLine = checksum;
+        this.getUploadedFilesList();
+      },
+      error: () => {
+        this.checksumLine = 'Failed to load checksum.';
+      }
+    });
+    
   }
 
   onFileSelected(event: Event): void {
@@ -36,6 +51,40 @@ export class DataUploadComponent {
     }
   }
 
+  downloadPKFile(): void {
+    this.downloading = true;
+    this.fileUploadService.downloadPublicKey$().subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'TRE.pub';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        this.downloading = false;
+      },
+      error: () => {
+        alert('Failed to download public key.');
+        this.downloading = false;
+      }
+    });
+  }
+
+
+  getUploadedFilesList(){
+    this.fileUploadService.getFilesUploaded(this.projectId).subscribe({
+      next: (response: any) => {
+        this.uploadedFiles = response.files;
+        console.log('Uploaded files:', this.uploadedFiles);
+      },
+      error: () => {
+        alert('Failed to retrieve uploaded files.');
+      }
+    });
+  }
+
   isValidFile(): boolean {
     if (!this.selectedFile) return false;
     if (this.selectedFile.size > 2 * 1024 * 1024 * 1024) {
@@ -43,7 +92,7 @@ export class DataUploadComponent {
       return false;
     }
     // TODO: allow only .c4gh files
-    if (!this.selectedFile.name.endsWith('.c4gh') && !this.selectedFile.name.endsWith('.txt')) {
+    if (!this.selectedFile.name.endsWith('.c4gh')) {
       this.error_message = 'Invalid file type. Please upload a .c4gh file.';
       return false;
     }

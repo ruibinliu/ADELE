@@ -1,21 +1,29 @@
 from flask import Blueprint, request, jsonify, session
 from minio import Minio
 import requests
+from pymongo import MongoClient
 from config.settings import * 
 from minio.commonconfig import CopySource
 from routes.tasks_management import updateTaskStatus
 from config.audit_logger import audit_logger
 import os
+from bson import ObjectId
 
 si_management_bp = Blueprint('si_management', __name__)
 
 # Initialize MinIO client
 minio_client = Minio(
-    MINIO_URI,
+    MINIO_ENDPOINT, 
     access_key=MINIO_ACCESS_KEY,
     secret_key=MINIO_SECRET_KEY,
-    secure=False
-)
+    secure=False # Change to TRUE if HTTPS is required
+) 
+
+client = MongoClient(MONGO_URI)
+dbProject = client["project"]
+projectDB = dbProject["project_details"]
+
+filesDB = dbProject["files"]
 
 TES_BUCKET = "tes"
 RESULTS_BUCKET = "results"
@@ -167,51 +175,68 @@ def ingest_file():
     """
     Process a file from the SI queue.
     """
-    print("[DEBUG] Ingesting file. Request data:", request.json)
+    user_id = session.get('user_id', 'unknown')
+    username = session.get('username', 'unknown')
+    print("[DEBUG] Ingesting file. Request data:", request.form)
+    audit_logger.info(f"INGEST_FILE | REQUEST_RECEIVED | user_id={user_id} | username={username} | IP={request.remote_addr} | data={request.form}")
     try:
-        filename = request.json.get('filename')
+        filename = request.form.get('filename')
         if not filename:
+            audit_logger.warning(f"INGEST_FILE | FILENAME_MISSING | user_id={user_id} | username={username} | IP={request.remote_addr}")
             return jsonify({"error": "File name is required"}), 400
 
-        unique_id = request.json.get('unique_id')
+        unique_id = request.form.get('unique_id')
         if not unique_id:
+            audit_logger.warning(f"INGEST_FILE | UNIQUE_ID_MISSING | user_id={user_id} | username={username} | IP={request.remote_addr}")
             return jsonify({"error": "Unique ID is required"}), 400
 
-        dataset_id = request.json.get('dataset_id')
+        dataset_id = request.form.get('dataset_id')
         if not dataset_id:
+            audit_logger.warning(f"INGEST_FILE | DATASET_ID_MISSING | user_id={user_id} | username={username} | IP={request.remote_addr}")
             return jsonify({"error": "Dataset ID is required"}), 400
 
-        rems_item_name = request.json.get('rems_item_name', filename)
+        rems_item_name = request.form.get('rems_item_name', filename)
         if not rems_item_name:
+            audit_logger.warning(f"INGEST_FILE | REMS_ITEM_NAME_MISSING | user_id={user_id} | username={username} | IP={request.remote_addr}")
             return jsonify({"error": "REMS item name is required"}), 400
 
         # Ingest file
         response = requests.post(SI_API_URI + "/ingest", json={"file_name": filename})
         print(f"[DEBUG] SI API response to Ingest: {response.status_code} - {response.text}")
+        audit_logger.info(f"INGEST_FILE | INGEST_API_CALLED | user_id={user_id} | username={username} | IP={request.remote_addr} | filename={filename} | status={response.status_code}")
         if response.status_code != 200:
+            audit_logger.warning(f"INGEST_FILE | INGEST_API_FAILED | user_id={user_id} | username={username} | IP={request.remote_addr} | filename={filename} | status={response.status_code} | error={response.text}")
             return jsonify({"error": "Failed to ingest file"}), response.status_code
 
         # Accession file
         response = requests.post(SI_API_URI + "/accession/", json={"file_name": filename, "unique_id": unique_id})
         print(f"[DEBUG] SI API response to Accession: {response.status_code} - {response.text}")
+        audit_logger.info(f"INGEST_FILE | ACCESSION_API_CALLED | user_id={user_id} | username={username} | IP={request.remote_addr} | filename={filename} | unique_id={unique_id} | status={response.status_code}")
         if response.status_code != 200:
+            audit_logger.warning(f"INGEST_FILE | ACCESSION_API_FAILED | user_id={user_id} | username={username} | IP={request.remote_addr} | filename={filename} | unique_id={unique_id} | status={response.status_code} | error={response.text}")
             return jsonify({"error": "Failed to accession file"}), response.status_code
 
         # Create dataset
         response = requests.post(SI_API_URI + "/dataset/", json={"file_name": filename, "dataset_id": dataset_id})
         print(f"[DEBUG] SI API response to Create Dataset: {response.status_code} - {response.text}")
+        audit_logger.info(f"INGEST_FILE | DATASET_API_CALLED | user_id={user_id} | username={username} | IP={request.remote_addr} | filename={filename} | dataset_id={dataset_id} | status={response.status_code}")
         if response.status_code != 200:
+            audit_logger.warning(f"INGEST_FILE | DATASET_API_FAILED | user_id={user_id} | username={username} | IP={request.remote_addr} | filename={filename} | dataset_id={dataset_id} | status={response.status_code} | error={response.text}")
             return jsonify({"error": "Failed to create dataset"}), response.status_code
 
         # Update REMS
         rems_success = update_rems(dataset_id, rems_item_name)
+        audit_logger.info(f"INGEST_FILE | REMS_UPDATE_ATTEMPT | user_id={user_id} | username={username} | IP={request.remote_addr} | dataset_id={dataset_id} | rems_item_name={rems_item_name} | success={rems_success}")
         if not rems_success:
+            audit_logger.warning(f"INGEST_FILE | REMS_UPDATE_FAILED | user_id={user_id} | username={username} | IP={request.remote_addr} | dataset_id={dataset_id} | rems_item_name={rems_item_name}")
             return jsonify({"error": "Failed to update REMS resource"}), 500
 
+        audit_logger.info(f"INGEST_FILE | SUCCESS | user_id={user_id} | username={username} | IP={request.remote_addr} | filename={filename} | dataset_id={dataset_id}")
         return jsonify({"message": "File processed successfully"}), 200
 
     except Exception as e:
         print(f"[ERROR] Exception in process_file: {e}")
+        audit_logger.error(f"INGEST_FILE | EXCEPTION | user_id={user_id} | username={username} | IP={request.remote_addr} | error={str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -242,3 +267,86 @@ def get_file():
         return jsonify({"error": str(e)}), 500
 
     
+@si_management_bp.route("/files/list", methods=["POST"])
+def list_uploaded_files():
+    """
+    Get the names and upload times of all files uploaded.
+    """
+    user_id = session.get('user_id', 'unknown')
+    username = session.get('username', 'unknown')
+
+    project_id = request.form.get('project_id')
+
+    audit_logger.info(f"SI_LIST_UPLOADED_FILES | REQUEST_RECEIVED | IP={user_id}")
+
+    if not project_id:
+        audit_logger.warning(f"SI_LIST_UPLOADED_FILES | PROJECT_ID_MISSING | user_id={user_id} | IP={request.remote_addr}")
+        return jsonify({"error": "Project ID is required"}), 400
+
+    # Find all files for the given project ID
+    files = list(filesDB.find({"project_id": project_id}))
+    audit_logger.info(f"SI_LIST_UPLOADED_FILES | FILES_FOUND | user_id={user_id} | project_id={project_id} | IP={request.remote_addr} | files_count={len(files)}")
+    result = []
+    for f in files:
+        result.append({
+            "file_id": str(f["_id"]),
+            "filename": f.get("filename", ""),
+            "user": f.get("user", ""),
+            "upload_time": f.get("upload_time", "")
+        })
+
+    audit_logger.info(f"SI_LIST_UPLOADED_FILES | SUCCESS | user_id={user_id} | project_id={project_id} | IP={request.remote_addr}")
+    return jsonify({"files": result}), 200
+
+@si_management_bp.route('/get/file/<filename>', methods=['GET'])
+def get_single_file(filename):
+    """
+    Return a single file's content from its name in the temporary directory.
+    """
+    user_id = session.get('user_id', 'unknown')
+    username = session.get('username', 'unknown')
+
+    PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+    SHARED_BASE_DIR = os.path.abspath(os.path.join(PROJECT_ROOT, "..", "..", "..", "tre-shared-documents"))
+    TEMP_DIR = os.path.join(SHARED_BASE_DIR, "tmp")
+    file_path = os.path.join(TEMP_DIR, filename)
+
+    try:
+        print(f"[DEBUG] Fetching file: {file_path}")
+        if not os.path.isfile(file_path):
+            audit_logger.warning(f"GET_SINGLE_FILE | FILE_NOT_FOUND | user_id={user_id} | username={username} | IP={request.remote_addr} | filename={filename}")
+            return jsonify({"error": "File not found"}), 404
+
+        with open(file_path, "rb") as f:
+            content = f.read()
+        audit_logger.info(f"GET_SINGLE_FILE | SUCCESS | user_id={user_id} | username={username} | IP={request.remote_addr} | filename={filename}")
+        return content, 200, {'Content-Type': 'application/octet-stream'}
+    except Exception as e:
+        print(f"[ERROR] Exception in get_single_file: {e}")
+        audit_logger.warning(f"GET_SINGLE_FILE | ERROR | user_id={user_id} | username={username} | IP={request.remote_addr} | filename={filename} | error={str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@si_management_bp.route('/update/file/status', methods=['POST'])
+def update_file_status():
+    """
+    Update the status of a file.
+    """
+    user_id = session.get('user_id', 'unknown')
+    username = session.get('username', 'unknown')
+
+    file_id = request.form.get('file_id')
+
+    audit_logger.info(f"SI_UPDATE_FILE_STATUS | REQUEST_RECEIVED | IP={request.remote_addr}")
+
+    if not file_id:
+        audit_logger.warning(f"SI_UPDATE_FILE_STATUS | FILE_ID_MISSING | user_id={user_id} | IP={request.remote_addr}")
+        return jsonify({"error": "File ID is required"}), 400
+
+    # Update the file status in the database
+    result = filesDB.update_one({"_id": ObjectId(file_id)}, {"$set": {"archived": True}})
+    if result.modified_count == 0:
+        audit_logger.warning(f"SI_UPDATE_FILE_STATUS | FILE_NOT_FOUND | user_id={user_id} | file_id={file_id} | IP={request.remote_addr}")
+        return jsonify({"error": "File not found"}), 404
+
+    audit_logger.info(f"SI_UPDATE_FILE_STATUS | SUCCESS | user_id={user_id} | file_id={file_id} | IP={request.remote_addr}")
+    return jsonify({"success": True}), 200

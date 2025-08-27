@@ -7,7 +7,7 @@ import requests
 import jwt
 from flask_cors import CORS
 from pymongo import MongoClient
-from settings import *
+from config.settings import *
 from pathlib import Path
 import json
 from rdflib import Graph
@@ -17,8 +17,7 @@ from routes.fdp_routes import fdp_bp
 from routes.si_routes import si_bp
 from routes.files_routes import legal_docs_bp
 import xml.etree.ElementTree as ET
-
-import utils
+from utils import util
 
 # =========================
 # Logging Configuration
@@ -223,17 +222,13 @@ def get_projects():
     """Return all user's projects"""
 
     id_token = request.cookies.get('id_token')
-    user_id = utils.get_user_id(id_token)
+    user_id = util.get_user_id(id_token)
     audit_logger.info(f"GET_PROJECTS | user_id={user_id} | IP={request.remote_addr}")
     if not user_id:
         audit_logger.warning(f"GET_PROJECTS | UNAUTHORIZED | IP={request.remote_addr}")
         return jsonify({"error": "Unauthorized"}), 401
-    
-    projects = list(projectDB.find({'owner': user_id}))  
-    
-    # Convert ObjectId to string
-    for i in range(len(projects)):
-        projects[i] = utils.serialize_doc(projects[i])
+
+    projects = [util.serialize_doc(p) for p in projectDB.find({'owner': user_id})]
 
     json_data = json.dumps(projects, default=str)
     return jsonify(json_data), 200
@@ -244,7 +239,7 @@ def get_project(project_id):
     """Return a specific project"""
 
     id_token = request.cookies.get('id_token')
-    user_id = utils.get_user_id(id_token)
+    user_id = util.get_user_id(id_token)
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -254,7 +249,7 @@ def get_project(project_id):
         return jsonify({"error": "Project not found"}), 404
     
     # Convert ObjectId to string
-    project = utils.serialize_doc(project)
+    project = util.serialize_doc(project)
 
     return jsonify(project), 200
 
@@ -292,7 +287,7 @@ def update_project(project_id):
         return jsonify({"error": "Project data missing"}), 400
     
     id_token = request.cookies.get('id_token')
-    user_id = utils.get_user_id(id_token)
+    user_id = util.get_user_id(id_token)
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -333,7 +328,7 @@ def runTask():
     pipeline_id = request.json['pipeline_id']
 
     id_token = request.cookies.get('id_token')
-    user_id = utils.get_user_id(id_token)
+    user_id = util.get_user_id(id_token)
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -411,7 +406,7 @@ def getTask(taskId):
 def get_tasks():
     """Return all tasks for the user"""
     id_token = request.cookies.get('id_token')
-    user_id = utils.get_user_id(id_token)
+    user_id = util.get_user_id(id_token)
     audit_logger.info(f"GET_TASKS | user_id={user_id} | IP={request.remote_addr}")
     
     if not user_id:
@@ -422,7 +417,7 @@ def get_tasks():
     
     # Convert ObjectId to string
     for i in range(len(tasks)):
-        tasks[i] = utils.serialize_doc(tasks[i])
+        tasks[i] = util.serialize_doc(tasks[i])
 
     return jsonify(tasks), 200
 

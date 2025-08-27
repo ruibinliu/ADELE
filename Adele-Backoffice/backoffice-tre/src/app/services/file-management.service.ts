@@ -27,4 +27,20 @@ getQueueFiles() {
   processFile(form : FormData) {
     return this.http.post(`${this.apiUri}/api/si/ingest`, form, { withCredentials: true });
   }
+
+  getProjectFiles(projectId: string) {
+    const form = new FormData();
+    form.append('project_id', projectId);
+    return this.http.post(`${this.apiUri}/api/si/files/list`, form , { withCredentials: true });
+  }
+
+  getFile(fileId: string) {
+    return this.http.get(`${this.apiUri}/api/si/get/file/${fileId}`, { withCredentials: true });
+  }
+
+  fileIngested(fileId: string) {
+    const form = new FormData();
+    form.append('file_id', fileId);
+    return this.http.post(`${this.apiUri}/api/si/update/file/status`, form, { withCredentials: true });
+  }
 }

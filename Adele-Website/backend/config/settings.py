@@ -1,7 +1,5 @@
 import os
 from dotenv import load_dotenv
-
-# Load environment variables from .env
 load_dotenv()
 
 SESSION_SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
@@ -27,9 +25,13 @@ FDP_TRE_CATALOG_URI= os.getenv("FDP_TRE_CATALOG_URI")
 
 API_PORT = os.getenv("API_PORT")
 
-MINIO_URI = os.getenv("MINIO_URI")
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
 MINIO_SERVICE_ACCOUNT = os.getenv("MINIO_SERVICE_ACCOUNT")
 MINIO_SERVICE_ACCOUNT_SECRET = os.getenv("MINIO_SERVICE_ACCOUNT_SECRET")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
+
+
 REMS_URI = os.getenv("REMS_URI", "https://rems.tre.biodata.pt/api")
 REMS_API_KEY = os.getenv("REMS_API_KEY")
 REMS_USER_ID = os.getenv("REMS_USER_ID")

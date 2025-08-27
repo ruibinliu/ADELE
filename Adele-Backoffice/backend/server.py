@@ -57,8 +57,7 @@ def health_check():
 
 @app.route("/api/projects", methods=["GET"])
 def get_projects():
-    projects = list(projects_collection.find())
-    projects = [serialize_doc(p) for p in projects]
+    projects = [serialize_doc(p) for p in projects_collection.find()]
     user_id, username = get_user_info()
     audit_logger.info(f"GET_PROJECTS | user_id={user_id} | username={username} | IP={request.remote_addr}")
     print("Projects:", projects)  

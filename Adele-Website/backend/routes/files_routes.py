@@ -4,8 +4,8 @@ from fastapi import File
 import utils
 from flask import Blueprint, request, jsonify, send_file
 import requests
-import settings
-import fdp_utils
+from config.settings import *
+import utils.fdp_utils
 from pymongo import MongoClient
 import logging
 import os
@@ -13,7 +13,7 @@ from bson import ObjectId
 
 legal_docs_bp = Blueprint('files', __name__)
 
-client = MongoClient(settings.MONGO_URI)
+client = MongoClient(MONGO_URI)
 dbProject = client["project"]
 projectDB = dbProject["project_details"]
 
@@ -142,3 +142,5 @@ def upload_signed(project_id: str):
     )
 
     return {"status": "uploaded", "file": filename}
+
+
