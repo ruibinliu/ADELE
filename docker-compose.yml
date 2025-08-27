@@ -1,7 +1,7 @@
 services:
   mongodb:
     image: mongo:latest
-    command: ["mongod", "--bind_ip_all", "--port", "27017"]
+    command: [ "mongod", "--bind_ip_all", "--port", "27017" ]
     container_name: adele-mongodb
     restart: always
     ports:
@@ -10,7 +10,7 @@ services:
       #- ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
       - adele_mongo_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -29,7 +29,7 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost"]
+      test: [ "CMD", "curl", "-f", "http://localhost" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -39,7 +39,6 @@ services:
       - BACKEND_URL=http://localhost:${BACKOFFICE_FRONTEND_PORT}
     volumes:
       - ./Adele-Backoffice/backoffice-tre:/app
-
 
   adele-backoffice-backend:
     build:
@@ -53,7 +52,6 @@ services:
       - .env
     environment:
       - SHARED_DOCS_PATH=/documents
-      - MINIO_ENDPOINT=tre-si-s3-1:9000
     volumes:
       - tre-shared-documents:/documents
       - ./Adele-Backoffice/backend:/backend
@@ -62,9 +60,9 @@ services:
     networks:
       - backoffice_frontend_backend
       - backend_db
-      - tre-core-priv
+      - tre-core
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${BACKOFFICE_BACKEND_PORT}/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:${BACKOFFICE_BACKEND_PORT}/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -85,7 +83,7 @@ services:
     volumes:
       - ./Adele-Website/TRE-BIODATA:/app
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost"]
+      test: [ "CMD", "curl", "-f", "http://localhost" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -100,29 +98,25 @@ services:
     env_file:
       - ./Adele-Website/backend/.env
       - .env
-    environment:
-      - MONGO_URI=mongodb://mongodb:27017
-      - MINIO_ENDPOINT=tre-si-s3-1:9000
     depends_on:
       - mongodb
     networks:
       - website_frontend_backend
       - backend_db
-      - tre-core-priv
+      - tre-core
     volumes:
       - ./Adele-Website/backend/config:/backend/config
       - ./Adele-Website/backend:/backend
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${WEBSITE_BACKEND_PORT}/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:${WEBSITE_BACKEND_PORT}/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
 
-  
-
 volumes:
   adele_mongo_data:
   tre-shared-documents:
+
 
 networks:
   backoffice_frontend_backend:
@@ -131,5 +125,5 @@ networks:
     driver: bridge
   website_frontend_backend:
     driver: bridge
-  tre-core-priv:
+  tre-core:
     external: true
