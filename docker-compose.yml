@@ -125,5 +125,5 @@ networks:
     driver: bridge
   website_frontend_backend:
     driver: bridge
-  tre-core:
-    external: true
+      # tre-core:
+      #   external: true
