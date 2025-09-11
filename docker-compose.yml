@@ -5,7 +5,7 @@ services:
     container_name: adele-mongodb
     restart: always
     ports:
-      - "${MONGODB_PORT}:27017"
+      - "27017:27017"
     volumes:
       #- ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
       - adele_mongo_data:/data/db
@@ -23,20 +23,15 @@ services:
       dockerfile: Dockerfile.frontend
     container_name: adele-backoffice-frontend
     ports:
-      - "${BACKOFFICE_FRONTEND_PORT}:80"
+      - "4300:80"
     depends_on:
       - adele-backoffice-backend
     env_file:
       - .env
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
     networks:
       - backoffice_frontend_backend
     environment:
-      - BACKEND_URL=http://localhost:${BACKOFFICE_FRONTEND_PORT}
+      - BACKEND_URL=http://localhost:$8080
     volumes:
       - ./Adele-Backoffice/backoffice-tre:/app
 
@@ -46,9 +41,8 @@ services:
       dockerfile: Dockerfile
     container_name: adele-backoffice-backend
     ports:
-      - "${BACKOFFICE_BACKEND_PORT}:${BACKOFFICE_BACKEND_PORT}"
+      - "8081:8081"
     env_file:
-      - ./Adele-Backoffice/backend/.env
       - .env
     environment:
       - SHARED_DOCS_PATH=/documents
@@ -61,11 +55,6 @@ services:
       - backoffice_frontend_backend
       - backend_db
       - tre-core
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:${BACKOFFICE_BACKEND_PORT}/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   adele-website-frontend:
     build:
@@ -73,7 +62,7 @@ services:
       dockerfile: Dockerfile.frontend
     container_name: adele-website-frontend
     ports:
-      - "${WEBSITE_FRONTEND_PORT}:80"
+      - "4200:80"
     env_file:
       - .env
     depends_on:
@@ -82,11 +71,7 @@ services:
       - website_frontend_backend
     volumes:
       - ./Adele-Website/TRE-BIODATA:/app
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+
 
   adele-website-backend:
     build:
@@ -94,9 +79,8 @@ services:
       dockerfile: Dockerfile
     container_name: adele-website-backend
     ports:
-      - "${WEBSITE_BACKEND_PORT}:${WEBSITE_BACKEND_PORT}"
+      - "8080:8080"
     env_file:
-      - ./Adele-Website/backend/.env
       - .env
     depends_on:
       - mongodb
@@ -107,11 +91,6 @@ services:
     volumes:
       - ./Adele-Website/backend/config:/backend/config
       - ./Adele-Website/backend:/backend
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:${WEBSITE_BACKEND_PORT}/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
 volumes:
   adele_mongo_data:
@@ -120,10 +99,7 @@ volumes:
 
 networks:
   backoffice_frontend_backend:
-    driver: bridge
   backend_db:
-    driver: bridge
   website_frontend_backend:
-    driver: bridge
   tre-core:
     external: true
