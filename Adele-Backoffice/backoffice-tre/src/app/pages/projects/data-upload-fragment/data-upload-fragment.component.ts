@@ -58,7 +58,8 @@ export class DataUploadFragmentComponent {
         if (res.success) {
           console.log(`File ${this.fileForm.value.filename} processed successfully.`);
           // remove the extension from filename
-          const filenameWithoutExtension = this.fileForm.value.filename.replace(/\.[^/.]+$/, "");
+          const filename = this.fileForm.value.filename || '';
+          const filenameWithoutExtension = filename.replace(/\.[^/.]+$/, "");
           console.log(`Filename without extension: ${filenameWithoutExtension}`);
           this.fileManagementService.fileIngested(this.selectedFileId).subscribe(
             (res: any) => {
