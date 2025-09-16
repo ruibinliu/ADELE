@@ -30,6 +30,7 @@ services:
       - .env
     networks:
       - backoffice_frontend_backend
+      - tre-core
     environment:
       - BACKEND_URL=http://localhost:$8080
     volumes:
@@ -69,6 +70,7 @@ services:
       - adele-website-backend
     networks:
       - website_frontend_backend
+      - tre-core
     volumes:
       - ./Adele-Website/TRE-BIODATA:/app
 
