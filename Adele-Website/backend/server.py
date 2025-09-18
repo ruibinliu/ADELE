@@ -108,7 +108,7 @@ def oidc_callback():
     access_token = token_data.get("access_token")
 
     # Store token in cookies
-    resp = make_response(redirect(FRONTEND_URI))
+    resp = make_response(redirect(WEBSITE_FRONTEND_URL_PUBLIC))
     resp.set_cookie('id_token', id_token, httponly=False, secure=True, samesite='None')
     resp.set_cookie('access_token', access_token, httponly=False, secure=True, samesite='None')
     resp.set_cookie('token_type', token_type, httponly=False, secure=True, samesite='None')
@@ -515,4 +515,4 @@ def get_contact_info():
 
 if __name__ == '__main__':
     audit_logger.info("SERVER_START")
-    app.run(host='0.0.0.0', port=API_PORT)
+    app.run(host='0.0.0.0', port=WEBSITE_BACKEND_PORT)
