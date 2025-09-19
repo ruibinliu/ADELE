@@ -31,8 +31,6 @@ services:
     networks:
       - backoffice_frontend_backend
       - tre-core
-    environment:
-      - BACKEND_URL=http://localhost:$8080
     volumes:
       - ./Adele-Backoffice/backoffice-tre:/app
 

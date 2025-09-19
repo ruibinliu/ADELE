@@ -171,7 +171,7 @@ def delete_pipeline(id):
 
 if __name__ == "__main__":
     audit_logger.info("SERVER_START")
-    app.run(host='0.0.0.0', port=BACKEND_PORT)
+    app.run(host='0.0.0.0', port=BACKOFFICE_BACKEND_PORT)
 
 
 

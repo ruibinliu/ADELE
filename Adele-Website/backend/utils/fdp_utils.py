@@ -207,7 +207,7 @@ def create_and_publish_metadata(dataset_info: Dict[str, Any], distributions_info
             "publisher": [publisher],
             "title": [LiteralField(value=dist_info["title"])],
             "description": [LiteralField(value=dist_info["description"])],
-            "access_uri": [dist_info.get("access_uri", REMS_URI + "/catalogue")],
+            "access_uri": [dist_info.get("access_uri", REMS_API + "/catalogue")],
             "media_type": LiteralField(value=dist_info["media_type"]),
             "has_version": dist_info.get("has_version", "1.0"),
         }
