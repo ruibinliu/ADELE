@@ -2,7 +2,7 @@
 
 export const environment = {
   production: false,
-  apiUri: `https://website.adele.inesc-id.pt`,
-  serverUri: `https://website-api.adele.inesc-id.pt`,
-  fdpUri: 'https://fdp.adele.inesc-id.pt'
+  apiUri: `https://website.tre.singou.net`,
+  serverUri: `https://website-api.tre.singou.net`,
+  fdpUri: 'https://fdp.tre.singou.net'
 };

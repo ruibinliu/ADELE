@@ -14,8 +14,8 @@ export class DataUploadFragmentComponent {
 
   files: any[] = [];
 
-  uniqueIdPrefix = 'pt:inesc-id.pt:tre:adele:';
-  datasetIdPrefix = 'pt:inesc-id.pt:tre:adele:dataset:';
+  uniqueIdPrefix = 'mo:singou.net:tre:lotus';
+  datasetIdPrefix = 'mo:singou.net:tre:lotus:dataset:';
 
   selectedFile = '';
   selectedFileId=  '';
